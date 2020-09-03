@@ -1,5 +1,7 @@
 package a
 
+import "errors"
+
 type Test struct {
 }
 
@@ -12,6 +14,14 @@ func CreateTest(flag bool) *Test {
 		return &Test{}
 	} else {
 		return nil
+	}
+}
+
+func CreateTestWithErr(flag bool) (*Test, error) {
+	if flag {
+		return &Test{}, nil
+	} else {
+		return nil, errors.New("err")
 	}
 }
 
@@ -33,11 +43,19 @@ func f() interface{} {
 		e *Test
 		f *Test
 	)
+	g := CreateTest(true)
+	h, err := CreateTestWithErr(true)
+	if err != nil {
+		return err
+	}
+
 	x := a.test()
 	y := b.test() // want "b may be nil"
 	xx := t.test()
 	xy := e.test() // want "e may be nil"
 	xz := f.test() // want "f may be nil"
 	yx := s.test() // want "s may be nil"
-	return x + y + xx + aa + ab + ac + xy + xz + yx
+	ga := g.test() // want "g may be nil"
+	gb := h.test()
+	return x + y + xx + aa + ab + ac + xy + xz + yx + ga + gb
 }
