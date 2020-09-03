@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
-	"uaa"
+	"niller"
 )
 
 // flags for Analyzer.Flag.
@@ -24,12 +24,12 @@ type analyzerPlugin struct{}
 
 func (analyzerPlugin) GetAnalyzers() []*analysis.Analyzer {
 	if flags != "" {
-		flagset := uaa.Analyzer.Flags
+		flagset := niller.Analyzer.Flags
 		if err := flagset.Parse(strings.Split(flags, " ")); err != nil {
-			panic("cannot parse flags of uaa: " + err.Error())
+			panic("cannot parse flags of niller: " + err.Error())
 		}
 	}
 	return []*analysis.Analyzer{
-		uaa.Analyzer,
+		niller.Analyzer,
 	}
 }
