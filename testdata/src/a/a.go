@@ -32,6 +32,9 @@ func f() interface{} {
 	var (
 		f *Test
 	)
+	var g *Test
+	g = &Test{}
+	g.test()
 
 	a.test()
 	b.test() // want "b may be nil"
@@ -39,5 +42,6 @@ func f() interface{} {
 	d.test()
 	e.test()
 	f.test() // want "f may be nil"
+
 	return nil
 }

@@ -22,31 +22,6 @@ var Analyzer = &analysis.Analyzer{
 	},
 }
 
-func analyzeCallExpr(expr *ast.CallExpr, pass *analysis.Pass) (interface{}, error) {
-	// TODO
-	ident, ok := expr.Fun.(*ast.Ident)
-	if !ok {
-		return nil, errors.New("unexpected AST node")
-	}
-	decl, ok := ident.Obj.Decl.(*ast.FuncDecl)
-	if !ok {
-		return nil, errors.New("unexpected AST node")
-	}
-	var retValType []types.Type
-	for _, field := range decl.Type.Results.List {
-		if field.Names == nil {
-			typ := pass.TypesInfo.TypeOf(field.Type)
-			retValType = append(retValType, typ)
-		} else {
-			for _, ident := range field.Names {
-				typ := pass.TypesInfo.TypeOf(ident)
-				retValType = append(retValType, typ)
-			}
-		}
-	}
-	return &retValType, nil
-}
-
 func run(pass *analysis.Pass) (interface{}, error) {
 
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
@@ -56,6 +31,65 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	pointerSet := map[*ast.Object][]token.Pos{}
 
 	errorType := types.Universe.Lookup("error").Type()
+
+	analyzeReturnValOfCallExpr := func(expr *ast.CallExpr) (interface{}, error) {
+		// TODO
+		ident, ok := expr.Fun.(*ast.Ident)
+		if !ok {
+			return nil, errors.New("unexpected AST node")
+		}
+		decl, ok := ident.Obj.Decl.(*ast.FuncDecl)
+		if !ok {
+			return nil, errors.New("unexpected AST node")
+		}
+		var retValType []types.Type
+		for _, field := range decl.Type.Results.List {
+			if field.Names == nil {
+				typ := pass.TypesInfo.TypeOf(field.Type)
+				retValType = append(retValType, typ)
+			} else {
+				for _, ident := range field.Names {
+					typ := pass.TypesInfo.TypeOf(ident)
+					retValType = append(retValType, typ)
+				}
+			}
+		}
+		return &retValType, nil
+	}
+
+	analyzeCallExpr := func(expr *ast.CallExpr, idents []*ast.Ident) {
+		retValType, err := analyzeReturnValOfCallExpr(expr)
+		if err != nil {
+			return
+		}
+
+		var objs []*ast.Object
+		var errObjs *ast.Object
+
+		for i, typ := range *(retValType.(*[]types.Type)) {
+			ident := idents[i]
+			if types.Identical(typ, errorType) {
+				errObjs = ident.Obj
+			} else {
+				switch typ.(type) {
+				case *types.Pointer:
+					objs = append(objs, ident.Obj)
+					pointerSet[ident.Obj] = []token.Pos{}
+				case *types.Slice:
+					//TODO
+				}
+			}
+		}
+		if errObjs == nil {
+			for _, obj := range objs {
+				objErrMap[obj] = obj
+			}
+		} else {
+			for _, obj := range objs {
+				objErrMap[obj] = errObjs
+			}
+		}
+	}
 
 	inspect.Nodes(nil, func(n ast.Node, push bool) bool {
 		switch n := n.(type) {
@@ -81,78 +115,21 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				for _, expr := range n.Values {
 					switch conexpr := expr.(type) {
 					case *ast.CallExpr:
-						retValType, err := analyzeCallExpr(conexpr, pass)
-						if err != nil {
-							continue
-						}
-
-						var pointerObj []*ast.Object
-						var errObj *ast.Object
-
-						for i, typ := range *(retValType.(*[]types.Type)) {
-							ident := n.Names[i]
-							if types.Identical(typ, errorType) {
-								errObj = ident.Obj
-							} else {
-								switch typ.(type) {
-								case *types.Pointer:
-									pointerObj = append(pointerObj, ident.Obj)
-									pointerSet[ident.Obj] = []token.Pos{}
-								case *types.Slice:
-									//TODO
-								}
-							}
-						}
-						if errObj == nil {
-							for _, obj := range pointerObj {
-								objErrMap[obj] = obj
-							}
-						} else {
-							for _, obj := range pointerObj {
-								objErrMap[obj] = errObj
-							}
-						}
+						analyzeCallExpr(conexpr, n.Names)
 					}
 				}
 			}
 			return false
-		case *ast.AssignStmt: // :=
+		case *ast.AssignStmt: // :=, =
 			for _, expr := range n.Rhs {
 				switch conexpr := expr.(type) {
 				case *ast.CallExpr:
-					retValType, err := analyzeCallExpr(conexpr, pass)
-					if err != nil {
-						continue
+					idents := []*ast.Ident{}
+					for _, expr := range n.Lhs {
+						idents = append(idents, expr.(*ast.Ident))
 					}
-
-					var pointerObj []*ast.Object
-					var errObj *ast.Object
-
-					for i, typ := range *(retValType.(*[]types.Type)) {
-						ident := n.Lhs[i].(*ast.Ident)
-						if types.Identical(typ, errorType) {
-							errObj = ident.Obj
-						} else {
-							switch typ.(type) {
-							case *types.Pointer:
-								pointerObj = append(pointerObj, ident.Obj)
-								pointerSet[ident.Obj] = []token.Pos{}
-							case *types.Slice:
-								//TODO
-							}
-						}
-					}
-					if errObj == nil {
-						for _, obj := range pointerObj {
-							objErrMap[obj] = obj
-						}
-					} else {
-						for _, obj := range pointerObj {
-							objErrMap[obj] = errObj
-						}
-					}
+					analyzeCallExpr(conexpr, idents)
 				}
-
 			}
 		case *ast.IfStmt:
 			switch n1 := n.Cond.(type) {
