@@ -7,8 +7,8 @@ package main
 import (
 	"strings"
 
-	"uaa"
 	"golang.org/x/tools/go/analysis"
+	"uaa"
 )
 
 // flags for Analyzer.Flag.
@@ -33,4 +33,3 @@ func (analyzerPlugin) GetAnalyzers() []*analysis.Analyzer {
 		uaa.Analyzer,
 	}
 }
-

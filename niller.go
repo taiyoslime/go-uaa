@@ -22,15 +22,6 @@ var Analyzer = &analysis.Analyzer{
 	},
 }
 
-
-func isNil(expr ast.Expr) bool {
-	idt, ok := expr.(*ast.Ident)
-	if !ok {
-		return false
-	}
-	return idt.Name == "nil" && idt.Obj == nil
-}
-
 func analyzeCallExpr(expr *ast.CallExpr, pass *analysis.Pass) (interface{}, error) {
 	// TODO
 	ident, ok := expr.Fun.(*ast.Ident)
@@ -42,7 +33,7 @@ func analyzeCallExpr(expr *ast.CallExpr, pass *analysis.Pass) (interface{}, erro
 		return nil, errors.New("unexpected AST node")
 	}
 	var retValType []types.Type
-	for _, field:= range decl.Type.Results.List {
+	for _, field := range decl.Type.Results.List {
 		if field.Names == nil {
 			typ := pass.TypesInfo.TypeOf(field.Type)
 			retValType = append(retValType, typ)
@@ -60,12 +51,13 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
-
 	nilCheckedObjSet := map[*ast.Object]struct{}{}
 	objErrMap := map[*ast.Object]*ast.Object{}
-	pointerSet :=  map[*ast.Object][]token.Pos{}
+	pointerSet := map[*ast.Object][]token.Pos{}
 
-	inspect.Nodes(nil, func(n ast.Node, push bool) bool{
+	errorType := types.Universe.Lookup("error").Type()
+
+	inspect.Nodes(nil, func(n ast.Node, push bool) bool {
 		switch n := n.(type) {
 		case *ast.Ident:
 			_, ok := pointerSet[n.Obj]
@@ -96,7 +88,6 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 						var pointerObj []*ast.Object
 						var errObj *ast.Object
-						errorType := types.Universe.Lookup("error").Type()
 
 						for i, typ := range *(retValType.(*[]types.Type)) {
 							ident := n.Names[i]
@@ -125,42 +116,39 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				}
 			}
 			return false
-		case *ast.AssignStmt:
-			if n.Tok == token.DEFINE { // :=
-				for _, expr := range n.Rhs {
-					switch conexpr := expr.(type) {
-					case *ast.CallExpr:
-						retValType, err := analyzeCallExpr(conexpr, pass)
-						if err != nil {
-							continue
-						}
+		case *ast.AssignStmt: // :=
+			for _, expr := range n.Rhs {
+				switch conexpr := expr.(type) {
+				case *ast.CallExpr:
+					retValType, err := analyzeCallExpr(conexpr, pass)
+					if err != nil {
+						continue
+					}
 
-						var pointerObj []*ast.Object
-						var errObj *ast.Object
-						errorType := types.Universe.Lookup("error").Type()
+					var pointerObj []*ast.Object
+					var errObj *ast.Object
 
-						for i, typ := range *(retValType.(*[]types.Type)) {
-							ident := n.Lhs[i].(*ast.Ident)
-							if types.Identical(typ, errorType) {
-								errObj = ident.Obj
-							} else {
-								switch typ.(type) {
-								case *types.Pointer:
-									pointerObj = append(pointerObj, ident.Obj)
-									pointerSet[ident.Obj] = []token.Pos{}
-								case *types.Slice:
-									//TODO
-								}
-							}
-						}
-						if errObj == nil {
-							for _, obj := range pointerObj {
-								objErrMap[obj] = obj
-							}
+					for i, typ := range *(retValType.(*[]types.Type)) {
+						ident := n.Lhs[i].(*ast.Ident)
+						if types.Identical(typ, errorType) {
+							errObj = ident.Obj
 						} else {
-							for _, obj := range pointerObj {
-								objErrMap[obj] = errObj
+							switch typ.(type) {
+							case *types.Pointer:
+								pointerObj = append(pointerObj, ident.Obj)
+								pointerSet[ident.Obj] = []token.Pos{}
+							case *types.Slice:
+								//TODO
 							}
+						}
+					}
+					if errObj == nil {
+						for _, obj := range pointerObj {
+							objErrMap[obj] = obj
+						}
+					} else {
+						for _, obj := range pointerObj {
+							objErrMap[obj] = errObj
 						}
 					}
 				}
@@ -169,10 +157,12 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		case *ast.IfStmt:
 			switch n1 := n.Cond.(type) {
 			case *ast.BinaryExpr:
-				if n1.Op.String() == "==" || n1.Op.String() == "!=" {
-					if isNil(n1.X) != isNil(n1.Y) {
+				if n1.Op == token.EQL || n1.Op == token.NEQ {
+					typX := pass.TypesInfo.TypeOf(n1.X)
+					typY := pass.TypesInfo.TypeOf(n1.Y)
+					if types.Identical(typX, types.Typ[types.UntypedNil]) != types.Identical(typY, types.Typ[types.UntypedNil]) {
 						var checkedIdent ast.Expr
-						if isNil(n1.X) {
+						if types.Identical(typX, types.Typ[types.UntypedNil]) {
 							checkedIdent = n1.Y
 						} else {
 							checkedIdent = n1.X
@@ -188,7 +178,6 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		return true
 	})
 
-
 	for k := range pointerSet {
 		errObj := objErrMap[k]
 		_, ok := nilCheckedObjSet[errObj]
@@ -202,4 +191,3 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 	return nil, nil
 }
-
