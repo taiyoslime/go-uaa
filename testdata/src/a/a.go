@@ -9,53 +9,35 @@ func (t *Test) test() int {
 	return 1
 }
 
-func CreateTest(flag bool) *Test {
-	if flag {
-		return &Test{}
-	} else {
-		return nil
-	}
-}
-
-func CreateTestWithErr(flag bool) (*Test, error) {
-	if flag {
+func CreateTest(cond bool) (*Test, error) {
+	if cond {
 		return &Test{}, nil
 	} else {
 		return nil, errors.New("err")
 	}
 }
 
-func hogefuga() (a, b int, c int){
-	return 1, 1, 1
-}
-
-
 func f() interface{} {
 	var a = &Test{}
 	var b *Test
-	var t = CreateTest(true)
-	if t == nil {
-		panic("")
-	}
-	var s = CreateTest(true)
-	var aa, ab, ac = hogefuga()
-	var (
-		e *Test
-		f *Test
-	)
-	g := CreateTest(true)
-	h, err := CreateTestWithErr(true)
+	c, _ := CreateTest(true)
+	d, err := CreateTest(true)
 	if err != nil {
 		return err
 	}
+	var e *Test
+	if e, err = CreateTest(true); err != nil {
+		return err
+	}
+	var (
+		f *Test
+	)
 
-	x := a.test()
-	y := b.test() // want "b may be nil"
-	xx := t.test()
-	xy := e.test() // want "e may be nil"
-	xz := f.test() // want "f may be nil"
-	yx := s.test() // want "s may be nil"
-	ga := g.test() // want "g may be nil"
-	gb := h.test()
-	return x + y + xx + aa + ab + ac + xy + xz + yx + ga + gb
+	a.test()
+	b.test() // want "b may be nil"
+	c.test() // want "c may be nil"
+	d.test()
+	e.test()
+	f.test() // want "f may be nil"
+	return nil
 }
