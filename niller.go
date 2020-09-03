@@ -1,4 +1,4 @@
-package uaa
+package niller
 
 import (
 	"go/ast"
@@ -9,11 +9,11 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-const doc = "uaa is ..."
+const doc = "niller is ..."
 
 // Analyzer is ...
 var Analyzer = &analysis.Analyzer{
-	Name: "uaa",
+	Name: "niller",
 	Doc:  doc,
 	Run:  run,
 	Requires: []*analysis.Analyzer{

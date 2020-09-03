@@ -1,9 +1,9 @@
-package uaa_test
+package niller_test
 
 import (
 	"testing"
 
-	"uaa"
+	"niller"
 
 	"golang.org/x/tools/go/analysis/analysistest"
 )
@@ -11,5 +11,5 @@ import (
 // TestAnalyzer is a test for Analyzer.
 func TestAnalyzer(t *testing.T) {
 	testdata := analysistest.TestData()
-	analysistest.Run(t, testdata, uaa.Analyzer, "a")
+	analysistest.Run(t, testdata, niller.Analyzer, "a")
 }

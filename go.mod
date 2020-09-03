@@ -1,4 +1,4 @@
-module uaa
+module niller
 
 go 1.14
 
