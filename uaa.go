@@ -48,16 +48,55 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			if n.Values == nil {
 				for _, ident := range n.Names {
 					typ := pass.TypesInfo.TypeOf(ident)
-					if typ != nil {
-						_, ok := typ.(*types.Pointer)
-						if ok {
-							pointerSet[ident.Obj] = []token.Pos{}
+					switch typ.(type) {
+					case *types.Pointer:
+						pointerSet[ident.Obj] = []token.Pos{}
+					case *types.Slice:
+						// TODO
+					}
+				}
+			} else {
+				for _, expr := range n.Values {
+					switch conexpr := expr.(type) {
+					case *ast.CallExpr:
+						ident, ok := conexpr.Fun.(*ast.Ident)
+						if !ok {
+							continue
+						}
+						decl, ok := ident.Obj.Decl.(*ast.FuncDecl)
+						if !ok {
+							continue
+						}
+						var retValType []types.Type
+						for _, field:= range decl.Type.Results.List {
+							if field.Names == nil {
+								typ := pass.TypesInfo.TypeOf(field.Type)
+								retValType = append(retValType, typ)
+							} else {
+								for _, ident := range field.Names {
+									typ := pass.TypesInfo.TypeOf(ident)
+									retValType = append(retValType, typ)
+								}
+							}
+						}
+
+						for i, typ := range retValType {
+							switch typ.(type) {
+							case *types.Pointer:
+								ident := n.Names[i]
+								pointerSet[ident.Obj] = []token.Pos{}
+							case *types.Slice:
+								// TODO
+							}
 						}
 					}
 				}
 			}
 			return false
-
+		case *ast.AssignStmt:
+			if n.Tok == token.DEFINE { // :=
+				// TODO
+			}
 		case *ast.IfStmt:
 			switch n1 := n.Cond.(type) {
 			case *ast.BinaryExpr:
