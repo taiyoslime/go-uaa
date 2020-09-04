@@ -3,7 +3,7 @@ package niller_test
 import (
 	"testing"
 
-	"niller"
+	"github.com/taiyoslime/niller"
 
 	"golang.org/x/tools/go/analysis/analysistest"
 )

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
-	"niller"
+	"github.com/taiyoslime/niller"
 )
 
 // flags for Analyzer.Flag.
