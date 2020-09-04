@@ -1,14 +1,15 @@
+# niller
+niller (nil + killer) is a static analysis tool that warns dangerous statement involving nil.
+
+# Example 
+```go
 package a
 
 import "errors"
 
-type Test struct {
-	val int
-}
+type Test struct { val int }
 
-func (t *Test) test() int {
-	return t.val
-}
+func (t *Test) test() int { return t.val }
 
 func CreateTest(cond bool) (*Test, error) {
 	if cond {
@@ -33,18 +34,13 @@ func f() interface{} {
 	var (
 		f *Test
 	)
-	/*
-	var g *Test
-	g = &Test{}
-	g.test()
-	*/
 
 	a.test()
-	b.test() // want "b may be nil"
-	c.test() // want "c may be nil"
+	b.test() // warns "b may be nil"
+	c.test() // warns "c may be nil"
 	d.test()
 	e.test()
-	f.test() // want "f may be nil"
-
+	f.test() // warns "f may be nil"
 	return nil
 }
+```

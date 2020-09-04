@@ -1,5 +1,5 @@
 // This file can build as a plugin for golangci-lint by below command.
-//    go build -buildmode=plugin -o path_to_plugin_dir uaa/plugin/uaa
+//    go build -buildmode=plugin -o path_to_plugin_dir niller/plugin/niller
 // See: https://golangci-lint.run/contributing/new-linters/#how-to-add-a-private-linter-to-golangci-lint
 
 package main
@@ -7,13 +7,13 @@ package main
 import (
 	"strings"
 
-	"uaa"
 	"golang.org/x/tools/go/analysis"
+	"niller"
 )
 
 // flags for Analyzer.Flag.
 // If you would like to specify flags for your plugin, you can put them via 'ldflags' as below.
-//     $ go build -buildmode=plugin -ldflags "-X 'main.flags=-opt val'" uaa/plugin/uaa
+//     $ go build -buildmode=plugin -ldflags "-X 'main.flags=-opt val'" niller/plugin/niller
 var flags string
 
 // AnalyzerPlugin provides analyzers as a plugin.
@@ -24,13 +24,12 @@ type analyzerPlugin struct{}
 
 func (analyzerPlugin) GetAnalyzers() []*analysis.Analyzer {
 	if flags != "" {
-		flagset := uaa.Analyzer.Flags
+		flagset := niller.Analyzer.Flags
 		if err := flagset.Parse(strings.Split(flags, " ")); err != nil {
-			panic("cannot parse flags of uaa: " + err.Error())
+			panic("cannot parse flags of niller: " + err.Error())
 		}
 	}
 	return []*analysis.Analyzer{
-		uaa.Analyzer,
+		niller.Analyzer,
 	}
 }
-

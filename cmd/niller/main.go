@@ -1,9 +1,8 @@
 package main
 
 import (
-	"uaa"
 	"golang.org/x/tools/go/analysis/unitchecker"
+	"niller"
 )
 
-func main() { unitchecker.Main(uaa.Analyzer) }
-
+func main() { unitchecker.Main(niller.Analyzer) }
