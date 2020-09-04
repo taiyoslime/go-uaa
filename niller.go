@@ -10,7 +10,7 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-const doc = "niller is ..."
+const doc = "niller (nil + killer) is a static analysis tool that warns dangerous statement involving nil."
 
 // Analyzer is ...
 var Analyzer = &analysis.Analyzer{
@@ -151,7 +151,11 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				case *ast.CallExpr:
 					idents := []*ast.Ident{}
 					for _, expr := range n.Lhs {
-						idents = append(idents, expr.(*ast.Ident))
+						ident, ok := expr.(*ast.Ident)
+						if !ok {
+							continue
+						}
+						idents = append(idents, ident)
 					}
 					analyzeCallExpr(conexpr, idents)
 				default:

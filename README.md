@@ -1,7 +1,19 @@
 # niller
 niller (nil + killer) is a static analysis tool that warns dangerous statement involving nil.
 
-# Example 
+## Installation
+
+```
+$ go get -u github.com/taiyoslime/niller/cmd/niller
+```
+
+## Usage
+
+```
+$ go vet -vettool=$(which niller)
+```
+
+## Example 
 ```go
 package a
 
