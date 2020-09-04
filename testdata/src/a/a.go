@@ -33,11 +33,13 @@ func f() interface{} {
 	var (
 		f *Test
 	)
-	/*
+
 	var g *Test
 	g = &Test{}
-	g.test()
-	*/
+
+	var h *Test
+	h = &Test{}
+	h = nil
 
 	a.test()
 	b.test() // want "b may be nil"
@@ -45,6 +47,8 @@ func f() interface{} {
 	d.test()
 	e.test()
 	f.test() // want "f may be nil"
+	g.test()
+	h.test() // want "h may be nil"
 
 	return nil
 }
