@@ -151,7 +151,11 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				case *ast.CallExpr:
 					idents := []*ast.Ident{}
 					for _, expr := range n.Lhs {
-						idents = append(idents, expr.(*ast.Ident))
+						ident, ok := expr.(*ast.Ident)
+						if !ok {
+							continue
+						}
+						idents = append(idents, ident)
 					}
 					analyzeCallExpr(conexpr, idents)
 				default:
