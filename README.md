@@ -7,9 +7,9 @@ package a
 
 import "errors"
 
-type Test struct {}
+type Test struct { val int }
 
-func (t *Test) test() int { return 1 }
+func (t *Test) test() int { return t.val }
 
 func CreateTest(cond bool) (*Test, error) {
 	if cond {

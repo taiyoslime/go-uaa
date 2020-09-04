@@ -3,10 +3,11 @@ package a
 import "errors"
 
 type Test struct {
+	val int
 }
 
 func (t *Test) test() int {
-	return 1
+	return t.val
 }
 
 func CreateTest(cond bool) (*Test, error) {
