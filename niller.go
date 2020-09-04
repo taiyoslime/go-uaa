@@ -22,13 +22,24 @@ var Analyzer = &analysis.Analyzer{
 	},
 }
 
+type obj struct {
+	pos         []token.Pos
+	errObj      *ast.Object
+	provablyNil bool
+}
+
+func createObj() *obj {
+	return &obj{
+		[]token.Pos{}, nil, true,
+	}
+}
+
 func run(pass *analysis.Pass) (interface{}, error) {
 
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
+	objSet := map[*ast.Object]*obj{}
 	nilCheckedObjSet := map[*ast.Object]struct{}{}
-	objErrMap := map[*ast.Object]*ast.Object{}
-	pointerSet := map[*ast.Object][]token.Pos{}
 
 	errorType := types.Universe.Lookup("error").Type()
 
@@ -74,7 +85,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				switch typ.(type) {
 				case *types.Pointer:
 					objs = append(objs, ident.Obj)
-					pointerSet[ident.Obj] = []token.Pos{}
+					objSet[ident.Obj] = createObj()
+
 				case *types.Slice:
 					//TODO
 				}
@@ -82,11 +94,11 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		}
 		if errObjs == nil {
 			for _, obj := range objs {
-				objErrMap[obj] = obj
+				objSet[obj].errObj = obj
 			}
 		} else {
 			for _, obj := range objs {
-				objErrMap[obj] = errObjs
+				objSet[obj].errObj = errObjs
 			}
 		}
 	}
@@ -94,9 +106,9 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	inspect.Nodes(nil, func(n ast.Node, push bool) bool {
 		switch n := n.(type) {
 		case *ast.Ident:
-			_, ok := pointerSet[n.Obj]
-			if ok {
-				pointerSet[n.Obj] = append(pointerSet[n.Obj], n.Pos())
+			obj, ok := objSet[n.Obj]
+			if ok && obj.provablyNil {
+				objSet[n.Obj].pos = append(objSet[n.Obj].pos, n.Pos())
 			}
 			return false
 		case *ast.ValueSpec:
@@ -105,8 +117,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 					typ := pass.TypesInfo.TypeOf(ident)
 					switch typ.(type) {
 					case *types.Pointer:
-						pointerSet[ident.Obj] = []token.Pos{}
-						objErrMap[ident.Obj] = ident.Obj
+						objSet[ident.Obj] = createObj()
+						objSet[ident.Obj].errObj = ident.Obj
 					case *types.Slice:
 						// TODO
 					}
@@ -120,8 +132,21 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				}
 			}
 			return false
-		case *ast.AssignStmt: // :=, =
-			for _, expr := range n.Rhs {
+		case *ast.AssignStmt: // :=, = etc...
+			for _, expr := range n.Lhs {
+				ident, ok := expr.(*ast.Ident)
+				if !ok {
+					continue
+				}
+				typ := pass.TypesInfo.TypeOf(ident)
+				switch typ.(type) {
+				case *types.Pointer, *types.Slice:
+				default:
+					continue
+				}
+			}
+
+			for i, expr := range n.Rhs {
 				switch conexpr := expr.(type) {
 				case *ast.CallExpr:
 					idents := []*ast.Ident{}
@@ -129,8 +154,27 @@ func run(pass *analysis.Pass) (interface{}, error) {
 						idents = append(idents, expr.(*ast.Ident))
 					}
 					analyzeCallExpr(conexpr, idents)
+				default:
+					if n.Tok == token.ASSIGN { // =
+						lident, ok := n.Lhs[i].(*ast.Ident)
+						if !ok {
+							continue
+						}
+						rident, ok := expr.(*ast.Ident)
+						if !ok {
+							objSet[lident.Obj].provablyNil = false
+							continue
+						}
+						typ := pass.TypesInfo.TypeOf(rident)
+						if types.Identical(typ, types.Typ[types.UntypedNil]) {
+							objSet[lident.Obj].provablyNil = true
+						} else {
+							objSet[lident.Obj].provablyNil = false
+						}
+					}
 				}
 			}
+			return false
 		case *ast.IfStmt:
 			switch n1 := n.Cond.(type) {
 			case *ast.BinaryExpr:
@@ -155,12 +199,12 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		return true
 	})
 
-	for k := range pointerSet {
-		errObj := objErrMap[k]
+	for k, v := range objSet {
+		errObj := v.errObj
 		_, ok := nilCheckedObjSet[errObj]
 
 		if !ok {
-			for _, pos := range pointerSet[k] {
+			for _, pos := range v.pos {
 				pass.Reportf(pos, "%s may be nil", k.Name)
 			}
 		}
