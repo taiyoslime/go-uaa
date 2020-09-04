@@ -2,4 +2,4 @@ module niller
 
 go 1.14
 
-require golang.org/x/tools v0.0.0-20200902012652-d1954cc86c82
+require golang.org/x/tools v0.0.0-20200903185744-af4cc2cd812e
