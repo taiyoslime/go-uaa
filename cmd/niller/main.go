@@ -2,7 +2,7 @@ package main
 
 import (
 	"golang.org/x/tools/go/analysis/unitchecker"
-	"uaa"
+	"niller"
 )
 
-func main() { unitchecker.Main(uaa.Analyzer) }
+func main() { unitchecker.Main(niller.Analyzer) }
