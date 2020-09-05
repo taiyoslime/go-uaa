@@ -1,8 +1,8 @@
 package main
 
 import (
-	"golang.org/x/tools/go/analysis/unitchecker"
 	"github.com/taiyoslime/niller"
+	"golang.org/x/tools/go/analysis/unitchecker"
 )
 
 func main() { unitchecker.Main(niller.Analyzer) }
